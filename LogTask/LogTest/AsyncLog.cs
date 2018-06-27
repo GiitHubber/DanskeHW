@@ -2,58 +2,70 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.IO;
-    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
 
+
+    /// <summary>
+    /// This class is used only to process task in async maner 
+    /// </summary>
     public class AsyncLog : ILog
     {
+
+        #region Private variables
         private Thread _runThread;
         private List<LogLine> _lines = new List<LogLine>();
-
-        private StreamWriter _writer; 
-
+        private ILogDataToOutput logDataTo;
+        private bool _QuitWithFlush = false;
         private bool _exit;
+        #endregion
 
-        public AsyncLog()
+        #region Constructor
+        public AsyncLog(ILogDataToOutput logDataTo)
         {
-            if (!Directory.Exists(@"C:\LogTest")) 
-                Directory.CreateDirectory(@"C:\LogTest");
-
-            this._writer = File.AppendText(@"C:\LogTest\Log" + DateTime.Now.ToString("yyyyMMdd HHmmss fff") + ".log");
-            
-            this._writer.Write("Timestamp".PadRight(25, ' ') + "\t" + "Data".PadRight(15, ' ') + "\t" + Environment.NewLine);
-
-            this._writer.AutoFlush = true;
-
+            this.logDataTo = logDataTo;
             this._runThread = new Thread(this.MainLoop);
             this._runThread.Start();
         }
+        #endregion
 
-        private bool _QuitWithFlush = false;
-
-
-        DateTime _curDate = DateTime.Now;
-
+        #region Private methods
+        /// <summary>
+        /// Loop in new thread not in main program one
+        /// </summary>
         private void MainLoop()
         {
             while (!this._exit)
             {
-                if (this._lines.Count > 0)
+                try
                 {
-                    FillAsync(this._lines);                
+                    if (this._lines.Count > 0)
+                    {
+                        FillAsync(this._lines);
+                    }
+
+                    //While loop never ends (bug) if statment not in place
+                    if (this._QuitWithFlush == true && this._lines.Count == 0)
+                        this._exit = true;
+
+                    Thread.Sleep(50);
                 }
-
-                //While loop never ends (bug) if statment not in place
-                if (this._QuitWithFlush == true && this._lines.Count == 0)
-                    this._exit = true;
-
-                Thread.Sleep(50);
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Unexpected exception occured");
+                    Console.WriteLine(ex.Message);
+                }
+               
             }
-            this._writer.Dispose();
+            
         }
 
+
+        /// <summary>
+        /// Write async lines
+        /// </summary>
+        /// <param name="tempLines"></param>
+        /// <returns></returns>
         private async Task FillAsync(List<LogLine> tempLines)
         {
 
@@ -64,34 +76,8 @@
                 if (!this._exit || this._QuitWithFlush)
                 {
                     _handled.Add(logLine);
-
-                    StringBuilder stringBuilder = new StringBuilder();
-                    //If midnight make new file
-                    if ((DateTime.Now - _curDate).Days != 0)
-                    {
-                        _curDate = DateTime.Now;
-
-                        this._writer = File.AppendText(@"C:\LogTest\Log" + DateTime.Now.ToString("yyyyMMdd HHmmss fff") + ".log");
-
-                        this._writer.Write("Timestamp".PadRight(25, ' ') + "\t" + "Data".PadRight(15, ' ') + "\t" + Environment.NewLine);
-
-                        stringBuilder.Append(Environment.NewLine);
-
-                        this._writer.Write(stringBuilder.ToString());
-
-                        this._writer.AutoFlush = true;
-                    }
-
-
-                    //Builds string to be written
-                    stringBuilder.Append(logLine.Timestamp.ToString("yyyy-MM-dd HH:mm:ss:fff"));
-                    stringBuilder.Append("\t");
-                    stringBuilder.Append(logLine.LineText());
-                    stringBuilder.Append("\t");
-
-                    stringBuilder.Append(Environment.NewLine);
-
-                    this._writer.Write(stringBuilder.ToString());
+                    logDataTo.WriteData(logLine);
+                    
                 }
             }
 
@@ -99,23 +85,16 @@
             {
                 this._lines.Remove(_handled[y]);
             }
-        } 
+        }
+        #endregion
 
-
-
+        #region Public methods
+        /// <summary>
+        /// Stop without finishing the write
+        /// </summary>
         public void StopWithoutFlush()
         {
             this._exit = true;
-            try
-            {
-                this._runThread.Abort();
-                
-            }
-            catch (ThreadAbortException)
-            {
-                
-            }
-
             
         }
 
@@ -128,5 +107,6 @@
         {
             this._lines.Add(new LogLine() { Text = text, Timestamp = DateTime.Now });
         }
+        #endregion
     }
 } 

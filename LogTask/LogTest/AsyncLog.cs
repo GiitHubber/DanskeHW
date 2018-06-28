@@ -41,7 +41,9 @@
                 {
                     if (this._lines.Count > 0)
                     {
+
                         FillAsync(this._lines);
+
                     }
 
                     //While loop never ends (bug) if statment not in place
@@ -52,6 +54,7 @@
                 }
                 catch (Exception ex)
                 {
+                    
                     Console.WriteLine("Unexpected exception occured");
                     Console.WriteLine(ex.Message);
                 }
@@ -72,19 +75,28 @@
             List<LogLine> _handled = new List<LogLine>();
             foreach (LogLine logLine in tempLines)
             {
-
-                if (!this._exit || this._QuitWithFlush)
+                try
                 {
-                    _handled.Add(logLine);
-                    logDataTo.WriteData(logLine);
-                    
+                    if (!this._exit || this._QuitWithFlush)
+                    {
+                        _handled.Add(logLine);
+                        logDataTo.WriteData(logLine);
+
+                    }
+                    for (int y = 0; y < _handled.Count; y++)
+                    {
+                        this._lines.Remove(_handled[y]);
+                    }
                 }
+                catch (Exception ex)
+                {
+                    _lines.Remove(logLine);
+                    Console.WriteLine("Excepetion caught during write in to the file");
+                }
+               
             }
 
-            for (int y = 0; y < _handled.Count; y++)
-            {
-                this._lines.Remove(_handled[y]);
-            }
+           
         }
         #endregion
 

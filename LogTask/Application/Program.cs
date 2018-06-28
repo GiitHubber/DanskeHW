@@ -10,6 +10,7 @@ namespace LogUsers
 
     using LogTest;
 
+
     class Program
     {
         static void Main(string[] args)
@@ -19,7 +20,6 @@ namespace LogUsers
             for (int i = 0; i < 15; i++)
             {
                 logger.Write("Number with Flush: " + i.ToString());
-                Thread.Sleep(50);
             }
 
             logger.StopWithFlush();

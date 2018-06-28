@@ -42,10 +42,12 @@
             return sb.ToString();
         }
 
+
         public virtual string CreateLineText()
         {
             return "";
         }
+
 
 
         #endregion
